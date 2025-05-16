@@ -109,6 +109,11 @@ opts_AddOptional '--gdcoeffs' 'GradientDistortionCoeffs' 'file' "gradient distor
 #Tim special parsing 
 opts_AddOptional '--usejacobian' 'UseJacobian' 'true or false' "Use jacobian" 
 
+# added for animal scanner by A.Uematsu on 2024/2/3
+opts_AddOptional '--scanner' 'Scanner' 'siemens, GE, Philips, or bruker' "Animal scanner or not" # added by A.Uematsu on 2024/2/3
+# added for mamoset by A.Uematsu on 2024/09/03
+opts_AddOptional '--species' 'SPECIES' 'Human, Macaque, or Marmoset' "Processing either Human or Nonhuman primates paramteters.  'Humans' (the default) follows the HCP processing steps" # added by A.Uematsu on 2024/2/3
+
 opts_ParseArguments "$@"
 
 if ((pipedirguessed))
@@ -190,6 +195,8 @@ verbose_echo "         DistortionCorrection              (method): $DistortionCo
 verbose_echo "                  TopupConfig         (topupconfig): $TopupConfig"
 verbose_echo "     GradientDistortionCoeffs            (gdcoeffs): $GradientDistortionCoeffs"
 verbose_echo "                  UseJacobian         (usejacobian): $UseJacobian"
+verbose_echo "                  Scanner         		(scanner): $Scanner"
+verbose_echo "                  SPECIES         		(species): $SPECIES"
 verbose_echo " "
 
 
@@ -223,7 +230,7 @@ case $DistortionCorrection in
             --method="SiemensFieldMap" \
             --fmapmag=${MagnitudeInputName} \
             --fmapphase=${PhaseInputName} \
-            --echodiff=${DeltaTE} \
+            --echodiff=${TE} \
             --ofmapmag=${WD}/Magnitude \
             --ofmapmagbrain=${WD}/Magnitude_brain \
             --ofmap=${WD}/FieldMap \
@@ -269,7 +276,7 @@ case $DistortionCorrection in
             --workingdir=${WD}/FieldMap \
             --method="GEHealthCareFieldMap" \
             --fmapmag=${MagnitudeInputName} \
-            --fmapphase=${PhaseInputName} \
+			--fmapphase=${PhaseInputName} \
             --echodiff=${DeltaTE} \
             --ofmapmag=${WD}/Magnitude \
             --ofmapmagbrain=${WD}/Magnitude_brain \
@@ -331,7 +338,8 @@ case $DistortionCorrection in
             --ojacobian=${WD}/Jacobian \
             --gdcoeffs=${GradientDistortionCoeffs} \
             --topupconfig=${TopupConfig} \
-            --usejacobian=${UseJacobian}
+            --usejacobian=${UseJacobian} \
+			--species=${SPECIES} 
 
         ;;
 
@@ -447,10 +455,32 @@ else
   ### Now do T2w to T1w registration
   mkdir -p ${WD}/T2w2T1w
 
+	### Create tentative biasfield corrected image - TH Jan 2021, improved T2w to T1w reg for high-res T1w and T2w
+  mkdir -p ${WD}/T2w2T1w
+
+  if [ ! -z ${BiasFieldSmoothingSigma} ] ; then
+  	BiasFieldSmoothingSigma="--bfsigma=${BiasFieldSmoothingSigma}"
+  fi
+  ${HCPPIPEDIR_PreFS}/BiasFieldCorrection_sqrtT1wXT2w.sh \
+    --workingdir=${WD}/T2w2T1w/BiasFieldCorrection_sqrtT1wXT2w \
+    --T1im=${WD}/${T1wImageBasename} \
+    --T1brain=${WD}/${T1wImageBrainBasename} \
+    --T2im=${WD}/${T2wImageBasename} \
+    --obias=${WD}/T2w2T1w/BiasField_acpc \
+    --oT1im=${WD}/${T1wImageBasename}_restore \
+    --oT1brain=${WD}/${T1wImageBasename}_restore_brain \
+    --oT2im=${WD}/${T2wImageBasename}_restore \
+    --oT2brain=${WD}/${T2wImageBasename}_restore_brain \
+    ${BiasFieldSmoothingSigma}
+
   # Main registration: between corrected T2w and corrected T1w
   verbose_echo "      ... Corrected T2w to T1w"
-  ${FSLDIR}/bin/epi_reg --epi=${WD}/${T2wImageBrainBasename} --t1=${WD}/${T1wImageBasename} --t1brain=${WD}/${T1wImageBrainBasename} --out=${WD}/T2w2T1w/T2w_reg
-
+  if [ "${Scanner}" == "bruker" ] ; then
+    ${HCPPIPEDIR_Global}/epi_reg_dof_withT2 --epi=${WD}/${T1wImageBasename}_restore_brain --t1=${WD}/${T2wImageBasename}_restore --t1brain=${WD}/${T1wImageBasename}_restore_brain --out=${WD}/T2w2T1w/T2w_reg --t2
+    else
+    echo "not bruker"
+    ${HCPPIPEDIR_Global}/epi_reg_dof --epi=${WD}/${T2wImageBasename}_restore_brain --t1=${WD}/${T1wImageBasename} --t1brain=${WD}/${T1wImageBasename}_restore_brain --out=${WD}/T2w2T1w/T2w_reg
+  fi
   # Make a warpfield directly from original (non-corrected) T2w to corrected T1w  (and apply it)
   verbose_echo "      ... Making a warpfield from original"
   ${FSLDIR}/bin/convertwarp --relout --rel --ref=${T1wImage} --warp1=${WD}/FieldMap2${T2wImageBasename}_Warp.nii.gz --postmat=${WD}/T2w2T1w/T2w_reg.mat -o ${WD}/T2w2T1w/T2w_dc_reg
@@ -480,11 +510,11 @@ echo " END: `date`" >> $WD/log.txt
 if [ -e $WD/qa.txt ] ; then rm -f $WD/qa.txt ; fi
 echo "cd `pwd`" >> $WD/qa.txt
 echo "# View registration result of corrected T2w to corrected T1w image: showing both images + sqrt(T1w*T2w)" >> $WD/qa.txt
-echo "fslview ${OutputT1wImage} ${OutputT2wImage} ${WD}/T2w2T1w/sqrtT1wbyT2w" >> $WD/qa.txt
+echo "fsleyes ${OutputT1wImage} ${OutputT2wImage} ${WD}/T2w2T1w/sqrtT1wbyT2w" >> $WD/qa.txt
 echo "# Compare pre- and post-distortion correction for T1w" >> $WD/qa.txt
-echo "fslview ${T1wImage} ${OutputT1wImage}" >> $WD/qa.txt
+echo "fsleyes ${T1wImage} ${OutputT1wImage}" >> $WD/qa.txt
 echo "# Compare pre- and post-distortion correction for T2w" >> $WD/qa.txt
-echo "fslview ${T2wImage} ${WD}/${T2wImageBasename}" >> $WD/qa.txt
+echo "fsleyes ${T2wImage} ${WD}/${T2wImageBasename}" >> $WD/qa.txt
 
 ##############################################################################################
 
