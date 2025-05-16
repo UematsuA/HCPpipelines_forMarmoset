@@ -82,33 +82,62 @@ echo "PWD = `pwd`" >> $WD/log.txt
 echo "date: `date`" >> $WD/log.txt
 echo " " >> $WD/log.txt
 
-########################################## DO WORK ########################################## 
+########################################## DO WORK ##########################################
 
-# Crop the FOV
-verbose_echo " --> Croping the FOV"
-${FSLDIR}/bin/robustfov -i "$Input" -m "$WD"/roi2full.mat -r "$WD"/robustroi.nii.gz $BrainSizeOpt
+if [ $IdentMat = "NONE" ] ; then
 
-# Invert the matrix (to get full FOV to ROI)
-verbose_echo " --> Inverting the matrix"
-${FSLDIR}/bin/convert_xfm -omat "$WD"/full2roi.mat -inverse "$WD"/roi2full.mat
+	# Crop the FOV
+	verbose_echo " --> Croping the FOV"
+	if [ `${FSLDIR}/bin/imtest ${Input}_brain` = 1 ] ; then
+		${FSLDIR}/bin/robustfov -i "$Input"_brain -m "$WD"/roi2full.mat -r "$WD"/robustroi.nii.gz #$BrainSizeOpt
+	else
+	echo "Not found ${Input}_brain.nii.gz. Use $Input for init registration"
+		${FSLDIR}/bin/robustfov -i "$Input" -m "$WD"/roi2full.mat -r "$WD"/robustroi.nii.gz #$BrainSizeOpt
+	fi
+	# Invert the matrix (to get full FOV to ROI)
+	verbose_echo " --> Inverting the matrix"
+	${FSLDIR}/bin/convert_xfm -omat "$WD"/full2roi.mat -inverse "$WD"/roi2full.mat
 
-# Register cropped image to MNI152 (12 DOF)
-verbose_echo " --> Registering cropped image to MNI152 (12 DOF)"
-${FSLDIR}/bin/flirt -interp spline -in "$WD"/robustroi.nii.gz -ref "$Reference" -omat "$WD"/roi2std.mat -out "$WD"/acpc_final.nii.gz -searchrx -30 30 -searchry -30 30 -searchrz -30 30
+	# Register cropped image to MNI152 (12 DOF)
+	verbose_echo " --> Registering cropped image to MNI152 (12 DOF)"
+	${FSLDIR}/bin/flirt -interp spline -in "$WD"/robustroi.nii.gz -ref "$Reference" -omat "$WD"/roi2std.mat -out "$WD"/acpc_final.nii.gz -searchrx -30 30 -searchry -30 30 -searchrz -30 30
 
-# Concatenate matrices to get full FOV to MNI
-verbose_echo " --> Concatenating matrices to get full FOV to MNI"
-${FSLDIR}/bin/convert_xfm -omat "$WD"/full2std.mat -concat "$WD"/roi2std.mat "$WD"/full2roi.mat
+	# Concatenate matrices to get full FOV to MNI
+	verbose_echo " --> Concatenating matrices to get full FOV to MNI"
+	${FSLDIR}/bin/convert_xfm -omat "$WD"/full2std.mat -concat "$WD"/roi2std.mat "$WD"/full2roi.mat
 
-# Get a 6 DOF approximation which does the ACPC alignment (AC, ACPC line, and hemispheric plane)
-verbose_echo " --> Geting a 6 DOF approximation"
-$CARET7DIR/wb_command -convert-affine -from-flirt "$WD"/full2std.mat "$Input".nii.gz "$Reference" -to-world "$WD"/full2std_world.mat
-${HCPPIPEDIR}/global/scripts/aff2rigid_world "$WD"/full2std_world.mat "$WD"/full2std_rigid_world.mat
-$CARET7DIR/wb_command -convert-affine -from-world "$WD"/full2std_rigid_world.mat -to-flirt "$OutputMatrix" "$Input".nii.gz "$Reference"
+	# Get a 6 DOF approximation which does the ACPC alignment (AC, ACPC line, and hemispheric plane)
+	verbose_echo " --> Geting a 6 DOF approximation"
+	if [[ $SPECIES == "Marmoset" ]] ; then
+		verbose_echo " --> marmoset"
+		${HCPPIPEDIR}/PreFreeSurfer/scripts/aff2rigid_marmoset "$WD"/full2std.mat "$OutputMatrix"
+	elif [[ $SPECIES == "Macaque" ]] ; then
+			verbose_echo " --> macaque"
+	#	${HCPPIPEDIR}/global/scripts/aff2rigid_world "$WD"/full2std.mat "$OutputMatrix"
+	#${HCPPIPEDIR}/PreFreeSurfer/scripts/aff2rigid_macaque2 "$WD"/full2std.mat "$OutputMatrix"
+	${HCPPIPEDIR}/global/scripts/aff2rigid_world "$WD"/full2std_world.mat "$WD"/full2std_rigid_world.mat
+    ${CARET7DIR}/wb_command -convert-affine -from-world "$WD"/full2std_rigid_world.mat -to-flirt "$OutputMatrix" "$Input".nii.gz "$Reference"
 
-# Create a resampled image (ACPC aligned) using spline interpolation
-verbose_echo " --> Creating a resampled image"
-${FSLDIR}/bin/applywarp --rel --interp=spline -i "$Input" -r "$Reference" --premat="$OutputMatrix" -o "$Output"
+	else
+		${FSLDIR}/bin/aff2rigid "$WD"/full2std.mat "$OutputMatrix"
+	fi
+
+	# Create a resampled image (ACPC aligned) using spline interpolation
+	verbose_echo " --> Creating a resampled image"
+	${FSLDIR}/bin/applywarp --rel --interp=spline -i "$Input" -r "$Reference" --premat="$OutputMatrix" -o "$Output"
+
+	if [[ `${FSLDIR}/bin/imtest ${Input}_brain` = 1 ]] ; then
+	 fslmaths "$Input"_brain -thr 0 -bin "$Input"_brain_mask # Inserted by Takuya Hayashi
+	 ${FSLDIR}/bin/applywarp --rel --interp=nn -i "$Input"_brain_mask -r "$Reference" --premat="$OutputMatrix" -o $(dirname ${Input})/custom_acpc_dc_restore_mask.nii.gz
+	 fslmaths "$Output" -mas $(dirname ${Input})/custom_acpc_dc_restore_mask.nii.gz "$Output"_brain # Inserted by Takuya Hayashi
+	fi
+
+else
+	verbose_echo " --> Copy ident.mat"
+	cp -v ${FSLDIR}/etc/flirtsch/ident.mat "$OutputMatrix" # Inserted by Takuya Hayashi
+	${FSLDIR}/bin/imcp "$Input" "$Output" # Inserted by Takuya Hayashi
+	${FSLDIR}/bin/imcp "$Input"_brain "$Output"_brain # Inserted by Takuya Hayashi
+fi
 
 verbose_green_echo "---> Finished AC-PC Alignment"
 verbose_echo " "
@@ -121,8 +150,8 @@ echo " END: `date`" >> $WD/log.txt
 if [ -e $WD/qa.txt ] ; then rm -f $WD/qa.txt ; fi
 echo "cd `pwd`" >> $WD/qa.txt
 echo "# Check that the following image does not cut off any brain tissue" >> $WD/qa.txt
-echo "fslview $WD/robustroi" >> $WD/qa.txt
+echo "fsleyes $WD/robustroi" >> $WD/qa.txt
 echo "# Check that the alignment to the reference image is acceptable (the top/last image is spline interpolated)" >> $WD/qa.txt
-echo "fslview $Reference $WD/acpc_final $Output" >> $WD/qa.txt
+echo "fsleyes $Reference $WD/acpc_final $Output" >> $WD/qa.txt
 
 ##############################################################################################
