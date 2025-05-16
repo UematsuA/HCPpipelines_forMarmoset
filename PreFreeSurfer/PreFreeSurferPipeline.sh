@@ -40,16 +40,16 @@
 # The primary purposes of the PreFreeSurfer Pipeline are:
 #
 # 1. To average any image repeats (i.e. multiple T1w or T2w images available)
-# 2. To create a native, undistorted structural volume space for the session
-#    * Session images in this native space will be distortion corrected
+# 2. To create a native, undistorted structural volume space for the subject
+#    * Subject images in this native space will be distortion corrected
 #      for gradient and b0 distortions and rigidly aligned to the axes
 #      of the MNI space. "Native, undistorted structural volume space"
-#      is sometimes shortened to the "session's native space" or simply
+#      is sometimes shortened to the "subject's native space" or simply
 #      "native space".
 # 3. To provide an initial robust brain extraction
 # 4. To align the T1w and T2w structural images (register them to the native space)
 # 5. To perform bias field correction
-# 6. To register the session's native space to the MNI space
+# 6. To register the subject's native space to the MNI space
 #
 # ## Prerequisites:
 #
@@ -83,12 +83,12 @@
 # ### Output Directories
 #
 # Command line arguments are used to specify the StudyFolder (--path) and
-# the Session (--session).  All outputs are generated within the tree rooted
-# at ${StudyFolder}/${Session}.  The main output directories are:
+# the Subject (--subject).  All outputs are generated within the tree rooted
+# at ${StudyFolder}/${Subject}.  The main output directories are:
 #
-# * The T1wFolder: ${StudyFolder}/${Session}/T1w
-# * The T2wFolder: ${StudyFolder}/${Session}/T2w
-# * The AtlasSpaceFolder: ${StudyFolder}/${Session}/MNINonLinear
+# * The T1wFolder: ${StudyFolder}/${Subject}/T1w
+# * The T2wFolder: ${StudyFolder}/${Subject}/T2w
+# * The AtlasSpaceFolder: ${StudyFolder}/${Subject}/MNINonLinear
 #
 # All outputs are generated in directories at or below these three main
 # output directories.  The full list of output directories is:
@@ -118,9 +118,9 @@
 # Also note that the following output directories are created:
 #
 # * T1wFolder, which is created by concatenating the following three option
-#   values: --path / --session / --t1
+#   values: --path / --subject / --t1
 # * T2wFolder, which is created by concatenating the following three option
-#   values: --path / --session / --t2
+#   values: --path / --subject / --t2
 #
 # These two output directories must be different. Otherwise, various output
 # files with standard names contained in such subdirectories, e.g.
@@ -182,13 +182,13 @@ opts_SetScriptDescription "Prepares raw data for running the FreeSurfer HCP pipe
 #  Usage Description Function
 # ------------------------------------------------------------------------------
 
-opts_AddMandatory '--path' 'StudyFolder' 'path' "Path to study data folder (required)  Used with --session input to create full path to root  directory for all outputs generated as path/session)"
+opts_AddMandatory '--path' 'StudyFolder' 'path' "Path to study data folder (required)  Used with --subject input to create full path to root  directory for all outputs generated as path/subject)"
 
-opts_AddMandatory '--session' 'Session' 'session' "Session ID (required)  Used with --path input to create full path to root  directory for all outputs generated as path/session" "--subject"
+opts_AddMandatory '--subject' 'Subject' 'subject' "Subject ID (required)  Used with --path input to create full path to root  directory for all outputs generated as path/subject"
 
-opts_AddMandatory '--t1' 'T1wInputImages' "T1" "An @ symbol separated list of full paths to T1-weighted  (T1w) structural images for the session (required)"
+opts_AddMandatory '--t1' 'T1wInputImages' "T1" "An @ symbol separated list of full paths to T1-weighted  (T1w) structural images for the subject (required)"
 
-opts_AddMandatory '--t2' 'T2wInputImages' "T2" "An @ symbol separated list of full paths to T2-weighted  (T2w) structural images for the session (required for   hcp-style data, can be NONE for legacy-style data,   see --processing-mode option)"
+opts_AddMandatory '--t2' 'T2wInputImages' "T2" "An @ symbol separated list of full paths to T2-weighted  (T2w) structural images for the subject (required for   hcp-style data, can be NONE for legacy-style data,   see --processing-mode option)"
 
 opts_AddMandatory '--t1template' 'T1wTemplate' 'file_path' "MNI T1w template"
 
@@ -265,16 +265,30 @@ opts_AddOptional '--topupconfig' 'TopupConfig' 'file_path' "Configuration file f
 
 opts_AddOptional '--bfsigma' 'BiasFieldSmoothingSigma' 'value' "Bias Field Smoothing Sigma (optional)"
 
-opts_AddOptional '--custombrain' 'CustomBrain' 'NONE_or_MASK_or_CUSTOM' "If PreFreeSurfer has been run before and you have created a custom  brain mask saved as '<session>/T1w/custom_acpc_dc_restore_mask.nii.gz', specify 'MASK'.   If PreFreeSurfer has been run before and you have created custom structural images, e.g.:  
-- '<session>/T1w/T1w_acpc_dc_restore_brain.nii.gz' 
-- '<session>/T1w/T1w_acpc_dc_restore.nii.gz' 
-- '<session>/T1w/T2w_acpc_dc_restore_brain.nii.gz' 
-- '<session>/T1w/T2w_acpc_dc_restore.nii.gz' 
-  to be used when peforming MNI152 Atlas registration, specify 'CUSTOM'.  When 'MASK' or 'CUSTOM' is specified, only the AtlasRegistration step is run.  If the parameter is omitted or set to NONE (the default),   standard image processing will take place.  If using 'MASK' or 'CUSTOM', the data still needs to be staged properly by   running FreeSurfer and PostFreeSurfer afterwards.  NOTE: This option allows manual correction of brain images in cases when they  were not successfully processed and/or masked by the regular use of the pipelines.  Before using this option, first ensure that the pipeline arguments used were   correct and that templates are a good match to the data. " "NONE"
+opts_AddOptional '--custombrain' 'CustomBrain' 'NONE_or_MASK_or_CUSTOM' "If PreFreeSurfer has been run before and you have created a custom  brain mask saved as '<subject>/T1w/custom_acpc_dc_restore_mask.nii.gz', specify 'MASK'.   If PreFreeSurfer has been run before and you have created custom structural images, e.g.:
+                                      - '<subject>/T1w/T1w_acpc_dc_restore_brain.nii.gz'
+                                      - '<subject>/T1w/T1w_acpc_dc_restore.nii.gz'
+                                      - '<subject>/T1w/T2w_acpc_dc_restore_brain.nii.gz'
+                                      - '<subject>/T1w/T2w_acpc_dc_restore.nii.gz'
+                                      to be used when peforming MNI152 Atlas registration, specify 'CUSTOM'.  When 'MASK' or 'CUSTOM' is specified, only the AtlasRegistration step is run.  If the parameter is omitted or set to NONE (the default),   standard image processing will take place.  If using 'MASK' or 'CUSTOM', the data still needs to be staged properly by   running FreeSurfer and PostFreeSurfer afterwards.  NOTE: This option allows manual correction of brain images in cases when they  were not successfully processed and/or masked by the regular use of the pipelines.  Before using this option, first ensure that the pipeline arguments used were   correct and that templates are a good match to the data. " "NONE"
 
 opts_AddOptional '--processing-mode' 'ProcessingMode' 'HCPStyleData_or__Controls_whether_the_HCP_acquisition_and_processing_guidelines_should_be_treated_as_requirements.__LegacyStyleData' "'HCPStyleData' (the default) follows the processing steps described in Glasser et al. (2013)   and requires 'HCP-Style' data acquistion.   'LegacyStyleData' allows additional processing functionality and use of some acquisitions  that do not conform to 'HCP-Style' expectations.  In this script, it allows not having a high-resolution T2w image. " "HCPStyleData"
 
 opts_AddOptional '--usejacobian' 'UseJacobian' 'TRUE or FALSE' "Whether to use jacobian modulation when correcting spin echo fieldmaps for gradient distortion" "True" # NOT IN THE ORIGNAL SCRIPT
+
+# ------------------------------------------------------------------------------
+#  Customized options for Non-Human data
+# ------------------------------------------------------------------------------
+opts_AddOptional '--species' 'SPECIES' 'Human, Macaque, or Marmoset' "Processing either Human or Nonhuman primates paramteters.  'Humans' (the default) follows the HCP processing steps" # added by A.Uematsu on 2024/2/3
+
+opts_AddOptional '--scanner' 'Scanner' 'siemens, GE, Philips, or bruker' "Animal scanner or not" # added by A.Uematsu on 2024/2/3
+
+opts_AddOptional '--identmat' 'IdentMat' 'NONE or TRUE' "Do regisration in ACPCAlignment, T2wToT1Reg and AtlasRegistration (NONE) or not (TRUE)"
+
+opts_AddOptional '--bemethod' 'BEmethod' 'TRUE or NONE' "For Non-Human data" # added by Takuya Hayashi 2016/06/18
+
+opts_AddOptional '--defacing' 'Defacing' 'TRUE or NONE' "Defacing?" # added by TH Jan 2020
+
 # ------------------------------------------------------------------------------
 #  Parse Arugments
 # ------------------------------------------------------------------------------
@@ -354,9 +368,9 @@ T2wFolder="T2w" #Location of T2w images
 AtlasSpaceFolder="MNINonLinear"
 
 # Build Paths
-T1wFolder=${StudyFolder}/${Session}/${T1wFolder}
-T2wFolder=${StudyFolder}/${Session}/${T2wFolder}
-AtlasSpaceFolder=${StudyFolder}/${Session}/${AtlasSpaceFolder}
+T1wFolder=${StudyFolder}/${Subject}/${T1wFolder}
+T2wFolder=${StudyFolder}/${Subject}/${T2wFolder}
+AtlasSpaceFolder=${StudyFolder}/${Subject}/${AtlasSpaceFolder}
 
 log_Msg "T1wFolder: $T1wFolder"
 log_Msg "T2wFolder: $T2wFolder"
@@ -394,6 +408,15 @@ if [ ! -e ${AtlasSpaceFolder}/xfms ] ; then
   mkdir -p ${AtlasSpaceFolder}/xfms/
 fi
 
+if [ "$SPECIES" != "Human" ] ; then
+	log_Msg "IdentMat: ${IdentMat}"
+	log_Msg "BEmethod: ${BEmethod}"
+	log_Msg "Defacing: ${Defacing}"
+	log_Msg "SPECIES: ${SPECIES}"
+	log_Msg "Scanner: ${Scanner}"
+fi
+
+
 # log_Msg "POSIXLY_CORRECT="${POSIXLY_CORRECT} #NOT DEFINED ANYWHERE ELSE DO WE NEED THIS? 
 
 # ------------------------------------------------------------------------------
@@ -419,20 +442,22 @@ if [ "$CustomBrain" = "NONE" ] ; then
 
   for TXw in ${Modalities} ; do
 
-      # set up appropriate input variables
-      if [ $TXw = T1w ] ; then
-          TXwInputImages="${T1wInputImages}"
-          TXwFolder=${T1wFolder}
-          TXwImage=${T1wImage}
-          TXwTemplate=${T1wTemplate}
-          TXwTemplate2mm=${T1wTemplate2mm}
-      else
-          TXwInputImages="${T2wInputImages}"
-          TXwFolder=${T2wFolder}
-          TXwImage=${T2wImage}
-          TXwTemplate=${T2wTemplate}
-          TXwTemplate2mm=${T2wTemplate2mm}
-      fi
+    # set up appropriate input variables
+    if [ $TXw = T1w ] ; then
+        TXwInputImages="${T1wInputImages}"
+        TXwFolder=${T1wFolder}
+        TXwImage=${T1wImage}
+        TXwTemplate=${T1wTemplate}
+        TXwTemplate2mm=${T1wTemplate2mm}
+        TXwTemplateBrain=${T1wTemplateBrain}
+    else
+        TXwInputImages="${T2wInputImages}"
+        TXwFolder=${T2wFolder}
+        TXwImage=${T2wImage}
+        TXwTemplate=${T2wTemplate}
+        TXwTemplate2mm=${T2wTemplate2mm}
+        TXwTemplateBrain=${T2wTemplateBrain}
+    fi
       OutputTXwImageARRAY=()
 
       # skip modality if no image
@@ -457,15 +482,25 @@ if [ "$CustomBrain" = "NONE" ] ; then
           # Make sure input axes are oriented the same as the templates
           ${RUN} ${FSLDIR}/bin/fslreorient2std $Image ${wdir}/${TXwImage}${i}
 
-          ${RUN} ${HCPPIPEDIR_Global}/GradientDistortionUnwarp.sh \
-            --workingdir=${wdir} \
-            --coeffs=$GradientDistortionCoeffs \
-            --in=${wdir}/${TXwImage}${i} \
-            --out=${TXwFolder}/${TXwImage}${i}_gdc \
-            --owarp=${TXwFolder}/xfms/${TXwImage}${i}_gdc_warp
-          OutputTXwImageARRAY+=("${TXwFolder}/${TXwImage}${i}_gdc")
-          i=$(($i+1))
-        done
+      ${RUN} ${HCPPIPEDIR_Global}/GradientDistortionUnwarp.sh \
+        --workingdir=${wdir} \
+        --coeffs=$GradientDistortionCoeffs \
+        --in=${wdir}/${TXwImage}${i} \
+        --out=${TXwFolder}/${TXwImage}${i}_gdc \
+        --owarp=${TXwFolder}/xfms/${TXwImage}${i}_gdc_warp
+      fi
+                OutputTXwImageARRAY+=("${TXwFolder}/${TXwImage}${i}_gdc")
+
+      if [ $(${FSLDIR}/bin/imtest $(remove_ext $Image)_brain) = 1 ] ; then # TH - for robust init registration
+          ${RUN} ${FSLDIR}/bin/fslreorient2std $(remove_ext $Image)_brain ${TXwFolder}/${TXwImage}${i}_gdc_brain
+           OutputTXwImageARRAY+=("${TXwFolder}/${TXwImage}${i}_gdc_brain")
+           echo "Found $(remove_ext $Image)_brain"
+
+            else
+          echo "Not found $(remove_ext $Image)_brain"
+       fi
+      i=$(($i+1))
+      done
 
       else
         log_Msg "NOT PERFORMING GRADIENT DISTORTION CORRECTION"
@@ -477,7 +512,17 @@ if [ "$CustomBrain" = "NONE" ] ; then
           i=$(($i+1))
         done
 
-      fi
+        if [ $(${FSLDIR}/bin/imtest $(remove_ext $Image)_brain) = 1 ] ; then # TH - for robust init registration
+                if [[ $(imtest ${TXwFolder}/${TXwImage}1_gdc_brain) = 1 ]] ; then
+                  imrm ${TXwFolder}/${TXwImage}1_gdc_brain
+                fi
+  	      ${RUN} ${FSLDIR}/bin/fslreorient2std $(remove_ext $Image)_brain ${TXwFolder}/${TXwImage}1_gdc_brain
+  	      echo "Found $(remove_ext $Image)_brain"
+
+  	    else
+  	      echo "WARNING: No $(remove_ext $Image)_brain "
+  	    fi
+     fi
 
       # Average Like (Same Modality) Scans
       OutputTXwImageSTRING=$(IFS=@; echo "${OutputTXwImageARRAY[*]}")
@@ -496,11 +541,21 @@ if [ "$CustomBrain" = "NONE" ] ; then
             --cleanup=no \
             --brain-size="$BrainSize" \
             --image-list="$OutputTXwImageSTRING"
+		
+        if [ -e ${TXwFolder}/${TXwImage}1_gdc_brain.nii.gz ] ; then
+            log_Msg "Trasform ${TXw} BRAIN to Averaged ${TXw} Image"
+            flirt -in ${TXwFolder}/${TXwImage}1_gdc_brain.nii.gz -ref ${TXwFolder}/${TXwImage} -applyxfm -init ${TXwFolder}/Average${TXw}Images/ToHalfTrans0001.mat -o ${TXwFolder}/${TXwImage}_brain -interp nearestneighbour
+            fslmaths ${TXwFolder}/${TXwImage} -mas ${TXwFolder}/${TXwImage}_brain ${TXwFolder}/${TXwImage}_brain
+        fi
+
       else
         log_Msg "Not Averaging ${TXw} Images"
         log_Msg "ONLY ONE IMAGE FOUND: COPYING"
         ${RUN} ${FSLDIR}/bin/imcp ${TXwFolder}/${TXwImage}1_gdc ${TXwFolder}/${TXwImage}
-      fi
+  	     if [ `${FSLDIR}/bin/imtest ${TXwFolder}/${TXwImage}1_gdc_brain` = 1 ] ; then
+  		  ${RUN} ${FSLDIR}/bin/imcp ${TXwFolder}/${TXwImage}1_gdc_brain ${TXwFolder}/${TXwImage}_brain
+  	     fi
+    fi
 
       # ACPC align T1w or T2w image to specified MNI Template to create native volume space
       log_Msg "Aligning ${TXw} image to ${TXwTemplate} to create native volume space"
@@ -509,10 +564,13 @@ if [ "$CustomBrain" = "NONE" ] ; then
       ${RUN} ${HCPPIPEDIR_PreFS}/ACPCAlignment.sh \
         --workingdir=${TXwFolder}/ACPCAlignment \
         --in=${TXwFolder}/${TXwImage} \
-        --ref=${TXwTemplate} \
+        --ref=${TXwTemplateBrain} \
         --out=${TXwFolder}/${TXwImage}_acpc \
         --omat=${TXwFolder}/xfms/acpc.mat \
-        --brainsize=${BrainSize}
+        --brainsize=${BrainSize} \
+		--identmat=${IdentMat} \
+		--bemethod=${BEmethod}
+    fi
 
       # Brain Extraction(FNIRT-based Masking)
       log_Msg "Performing Brain Extraction using FNIRT-based Masking"
@@ -527,7 +585,9 @@ if [ "$CustomBrain" = "NONE" ] ; then
         --ref2mmmask=${Template2mmMask} \
         --outbrain=${TXwFolder}/${TXwImage}_acpc_brain \
         --outbrainmask=${TXwFolder}/${TXwImage}_acpc_brain_mask \
-        --fnirtconfig=${FNIRTConfig}
+		--fnirtconfig=${FNIRTConfig} \
+		--identmat=${IdentMat} \
+		--species=${SPECIES}
 
   done
 
@@ -578,8 +638,9 @@ if [ "$CustomBrain" = "NONE" ] ; then
         --method=${AvgrdcSTRING} \
         --topupconfig=${TopupConfig} \
         --gdcoeffs=${GradientDistortionCoeffs} \
-        --usejacobian=${UseJacobian} 
-
+        --usejacobian=${UseJacobian} \
+		--species=${SPECIES} \
+		--scanner=${Scanner} 
       ;;
 
     *)
@@ -592,7 +653,7 @@ if [ "$CustomBrain" = "NONE" ] ; then
         # rm -r always needs to be treated with the utmost caution
         rm -r ${T2wFolder}/T2wToT1wReg
       fi
-
+  if  [  ! "${T1wInputImages}" = "NONE" ]; then
       log_Msg "mkdir -p ${wdir}"
       mkdir -p ${wdir}
 
@@ -606,7 +667,10 @@ if [ "$CustomBrain" = "NONE" ] ; then
         ${T1wFolder}/${T1wImage}_acpc_dc_brain \
         ${T1wFolder}/xfms/${T1wImage}_dc \
         ${T1wFolder}/${T2wImage}_acpc_dc \
-        ${T1wFolder}/xfms/${T2wImage}_reg_dc 
+        ${T1wFolder}/xfms/${T2wImage}_reg_dc \
+		${IdentMat}
+    fi
+
 
   esac
 
@@ -639,18 +703,20 @@ if [ "$CustomBrain" = "NONE" ] ; then
       --oT2brain=${T1wFolder}/${T2wImage}_acpc_dc_restore_brain \
       ${BiasFieldSmoothingSigma}
 
-  else  # -- No T2w image
+elif  [ ! "${T1wInputImages}" = "NONE" ] ; then  # -- No T2w image  #added for moving on the script even lack of T1w image is availabe	 A.Uematsu
 
     log_Msg "Performing Bias Field Correction using T1w image only"
 
-    ${RUN} ${HCPPIPEDIR_PreFS}/BiasFieldCorrection_T1wOnly.sh \
-      --workingdir=${T1wFolder}/BiasFieldCorrection_T1wOnly \
-      --T1im=${T1wFolder}/${T1wImage}_acpc_dc \
-      --T1brain=${T1wFolder}/${T1wImage}_acpc_dc_brain \
-      --obias=${T1wFolder}/BiasField_acpc_dc \
-      --oT1im=${T1wFolder}/${T1wImage}_acpc_dc_restore \
-      --oT1brain=${T1wFolder}/${T1wImage}_acpc_dc_restore_brain \
-      ${BiasFieldSmoothingSigma}
+  ${RUN} ${HCPPIPEDIR_PreFS}/BiasFieldCorrection_T1wOnly_RIKEN.sh \
+    --workingdir=${T1wFolder}/BiasFieldCorrection_T1wOnly \
+    --T1im=${T1wFolder}/${T1wImage}_acpc_dc \
+    --T1brain=${T1wFolder}/${T1wImage}_acpc_dc_brain \
+    --obias=${T1wFolder}/BiasField_acpc_dc \
+    --oT1im=${T1wFolder}/${T1wImage}_acpc_dc_restore \
+    --oT1brain=${T1wFolder}/${T1wImage}_acpc_dc_restore_brain \
+    ${BiasFieldSmoothingSigma}
+else
+  log_Msg "Not Performing Bias Field Correction T2w image only"
 
   fi
 
@@ -671,6 +737,7 @@ if [ "$CustomBrain" = "NONE" ] ; then
   # Just implement inline, rather than writing a separate script
   # Added 2/19/2019
   # ------------------------------------------------------------------------------
+if [ ! "${T1wInputImages}" = "NONE" ] ; then
 
   log_Msg "Creating one-step resampled version of {T1w,T2w}_acpc_dc outputs"
 
@@ -684,16 +751,19 @@ if [ "$CustomBrain" = "NONE" ] ; then
   fslmaths ${OutputT1wImage} -div ${T1wFolder}/BiasField_acpc_dc ${OutputT1wImage}_restore
   fslmaths ${OutputT1wImage}_restore -mas ${T1wFolder}/${T1wImage}_acpc_dc_brain ${OutputT1wImage}_restore_brain
 
-  if [ ! "${T2wInputImages}" = "NONE" ] ; then
-    OutputOrigT2wToT1w=OrigT2w2T1w_PreFS  # Name for one-step resample warpfield
-    convertwarp --relout --rel --ref=${T1wTemplate} --premat=${T2wFolder}/xfms/acpc.mat --warp1=${T1wFolder}/xfms/${T2wImage}_reg_dc --out=${T1wFolder}/xfms/${OutputOrigT2wToT1w}
+elif [ ! "${T1wInputImages}" = "NONE" ]&&[ ! "${T2wInputImages}" = "NONE" ] ; then
+  OutputOrigT2wToT1w=OrigT2w2T1w_PreFS  # Name for one-step resample warpfield
+  convertwarp --relout --rel --ref=${T1wTemplate} --premat=${T2wFolder}/xfms/acpc.mat --warp1=${T1wFolder}/xfms/${T2wImage}_reg_dc --out=${T1wFolder}/xfms/${OutputOrigT2wToT1w}
 
-    OutputT2wImage=${T1wFolder}/${T2wImage}_acpc_dc
-    applywarp --rel --interp=spline -i ${T2wFolder}/${T2wImage} -r ${T1wTemplate} -w ${T1wFolder}/xfms/${OutputOrigT2wToT1w} -o ${OutputT2wImage}
-    fslmaths ${OutputT2wImage} -abs ${OutputT2wImage} -odt float  # Use -abs (rather than '-thr 0') to avoid introducing zeros
-    fslmaths ${OutputT2wImage} -div ${T1wFolder}/BiasField_acpc_dc ${OutputT2wImage}_restore
-    fslmaths ${OutputT2wImage}_restore -mas ${T1wFolder}/${T1wImage}_acpc_dc_brain ${OutputT2wImage}_restore_brain
-  fi
+  OutputT2wImage=${T1wFolder}/${T2wImage}_acpc_dc
+  applywarp --rel --interp=spline -i ${T2wFolder}/${T2wImage} -r ${T1wTemplate} -w ${T1wFolder}/xfms/${OutputOrigT2wToT1w} -o ${OutputT2wImage}
+  fslmaths ${OutputT2wImage} -abs ${OutputT2wImage} -odt float  # Use -abs (rather than '-thr 0') to avoid introducing zeros
+  fslmaths ${OutputT2wImage} -div ${T1wFolder}/BiasField_acpc_dc ${OutputT2wImage}_restore
+  fslmaths ${OutputT2wImage}_restore -mas ${T1wFolder}/${T1wImage}_acpc_dc_brain ${OutputT2wImage}_restore_brain
+
+else
+  log_Msg "Skipping one-step resample because only T2w is available"
+fi
 
 # -- Are we using a custom mask?
 
@@ -741,6 +811,13 @@ imrm ${T1wFolder}/xfms/${OutputOrigT1wToT1wPostFS}
 
 log_Msg "Performing Atlas Registration to MNI152 (FLIRT and FNIRT)"
 
+if [[ $SPECIES == "Marmoset" ]]; then
+	Ref=${T2wTemplate}
+	Refbrain=${T2wTemplateBrain}
+else
+	Ref=${T1wTemplate}
+	Refbrain=${T1wTemplateBrain}
+fi
 ${RUN} ${HCPPIPEDIR_PreFS}/AtlasRegistrationToMNI152_FLIRTandFNIRT.sh \
   --workingdir=${AtlasSpaceFolder} \
   --t1=${T1wFolder}/${T1wImage}_acpc_dc \
@@ -749,8 +826,8 @@ ${RUN} ${HCPPIPEDIR_PreFS}/AtlasRegistrationToMNI152_FLIRTandFNIRT.sh \
   --t2=${T1wFolder_T2wImageWithPath_acpc_dc} \
   --t2rest=${T1wFolder}/${T2wImage}_acpc_dc_restore \
   --t2restbrain=${T1wFolder}/${T2wImage}_acpc_dc_restore_brain \
-  --ref=${T1wTemplate} \
-  --refbrain=${T1wTemplateBrain} \
+  --ref=${Ref} \
+  --refbrain=${Refbrain} \
   --refmask=${TemplateMask} \
   --ref2mm=${T1wTemplate2mm} \
   --ref2mmmask=${Template2mmMask} \
@@ -762,7 +839,9 @@ ${RUN} ${HCPPIPEDIR_PreFS}/AtlasRegistrationToMNI152_FLIRTandFNIRT.sh \
   --ot2=${AtlasSpaceFolder}/${T2wImage} \
   --ot2rest=${AtlasSpaceFolder}/${T2wImage}_restore \
   --ot2restbrain=${AtlasSpaceFolder}/${T2wImage}_restore_brain \
-  --fnirtconfig=${FNIRTConfig} 
+  --fnirtconfig=${FNIRTConfig} \
+  --species=${SPECIES} \
+  --identmat=${IdentMat}
 
 log_Msg "Completed!"
 
