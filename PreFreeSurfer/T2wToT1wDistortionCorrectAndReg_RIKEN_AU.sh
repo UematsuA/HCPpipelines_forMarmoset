@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 
 # Requirements for this script
 #  installed versions of: FSL, gradunwarp (HCP version)
@@ -67,7 +67,7 @@ opts_AddMandatory '--method' 'DistortionCorrection' 'method' "method used for re
 
         '${PHILIPS_METHOD_OPT}'
            use Philips specific Gradient Echo Field Maps for readout distortion correction
-        
+
         '${GE_HEALTHCARE_LEGACY_METHOD_OPT}'
            use GE HealthCare Legacy specific Gradient Echo Field Maps for SDC (i.e., field map in Hz and magnitude image in a single NIfTI file, via --fmapcombined argument).
            This option is maintained for backward compatibility.
@@ -86,7 +86,7 @@ opts_AddMandatory '--method' 'DistortionCorrection' 'method' "method used for re
 
 opts_AddOptional '--workingdir' 'WD' 'path' "working directory" "."
 
-opts_AddOptional '--fmapmag' 'MagnitudeInputName' 'image' "input fieldmap magnitude images (@-separated)"
+opts_AddOptional '--fmapmag' 'MagnitudeInputName' 'image' "input fieldmap magnitude image"
 
 opts_AddOptional '--fmapphase' 'PhaseInputName' 'image' "input fieldmap phase images in radians (Siemens/Philips) or in Hz (GE HealthCare)"
 
@@ -109,10 +109,7 @@ opts_AddOptional '--gdcoeffs' 'GradientDistortionCoeffs' 'file' "gradient distor
 #Tim special parsing 
 opts_AddOptional '--usejacobian' 'UseJacobian' 'true or false' "Use jacobian" 
 
-# added for animal scanner by A.Uematsu on 2024/2/3
 opts_AddOptional '--scanner' 'Scanner' 'siemens, GE, Philips, or bruker' "Animal scanner or not" # added by A.Uematsu on 2024/2/3
-# added for mamoset by A.Uematsu on 2024/09/03
-opts_AddOptional '--species' 'SPECIES' 'Human, Macaque, or Marmoset' "Processing either Human or Nonhuman primates paramteters.  'Humans' (the default) follows the HCP processing steps" # added by A.Uematsu on 2024/2/3
 
 opts_ParseArguments "$@"
 
@@ -196,7 +193,6 @@ verbose_echo "                  TopupConfig         (topupconfig): $TopupConfig"
 verbose_echo "     GradientDistortionCoeffs            (gdcoeffs): $GradientDistortionCoeffs"
 verbose_echo "                  UseJacobian         (usejacobian): $UseJacobian"
 verbose_echo "                  Scanner         		(scanner): $Scanner"
-verbose_echo "                  SPECIES         		(species): $SPECIES"
 verbose_echo " "
 
 
@@ -247,7 +243,7 @@ case $DistortionCorrection in
         ### Create fieldmaps (and apply gradient non-linearity distortion correction)
         echo " "
         echo " "
-        echo " " 
+        echo " "
 
         ${HCPPIPEDIR_Global}/FieldMapPreprocessingAll.sh \
             --workingdir=${WD}/FieldMap \
@@ -325,7 +321,7 @@ case $DistortionCorrection in
 
         # Use topup to distortion correct the scout scans
         #    using a blip-reversed SE pair "fieldmap" sequence
-        ${HCPPIPEDIR_Global}/TopupPreprocessingAll.sh \
+        ${HCPPIPEDIR_Global}/TopupPreprocessingAll_AU.sh \
             --workingdir=${WD}/FieldMap \
             --phaseone=${SpinEchoPhaseEncodeNegative} \
             --phasetwo=${SpinEchoPhaseEncodePositive} \
@@ -338,8 +334,7 @@ case $DistortionCorrection in
             --ojacobian=${WD}/Jacobian \
             --gdcoeffs=${GradientDistortionCoeffs} \
             --topupconfig=${TopupConfig} \
-            --usejacobian=${UseJacobian} \
-			--species=${SPECIES} 
+            --usejacobian=${UseJacobian}
 
         ;;
 
@@ -413,13 +408,13 @@ for TXw in $Modalities ; do
         *)
             log_Err "Unable to apply readout distortion correction"
             log_Err_Abort "Unrecognized distortion correction method: ${DistortionCorrection}"
-      
+
     esac
 
     ${FSLDIR}/bin/flirt -in ${WD}/FieldMap.nii.gz -ref ${TXwImage} -applyxfm -init ${WD}/Fieldmap2${TXwImageBasename}.mat -out ${WD}/FieldMap2${TXwImageBasename}
 
     # Convert to shift map then to warp field and unwarp the TXw
-    verbose_echo "      ... Converting to shift map, to warp field and unwarping $TXw"
+verbose_echo "      ... Converting to shift map, to warp field and unwarping $TXw"
     ${FSLDIR}/bin/fugue --loadfmap=${WD}/FieldMap2${TXwImageBasename} --dwell=${TXwSampleSpacing} --saveshift=${WD}/FieldMap2${TXwImageBasename}_ShiftMap.nii.gz
     ${FSLDIR}/bin/convertwarp --relout --rel --ref=${TXwImageBrain} --shiftmap=${WD}/FieldMap2${TXwImageBasename}_ShiftMap.nii.gz --shiftdir=${UnwarpDir} --out=${WD}/FieldMap2${TXwImageBasename}_Warp.nii.gz
     ${FSLDIR}/bin/applywarp --rel --interp=spline -i ${TXwImage} -r ${TXwImage} -w ${WD}/FieldMap2${TXwImageBasename}_Warp.nii.gz -o ${WD}/${TXwImageBasename}
@@ -448,7 +443,7 @@ if [ "${T2wImage}" == "NONE" ] ; then
   verbose_red_echo " ---> Skipping T2w to T1w registration"
 
 else
-        
+
   verbose_echo ""
   verbose_red_echo " ---> Running T2w to T1w registration"
 
@@ -505,16 +500,16 @@ verbose_green_echo "---> Finished T2w To T1w Distortion Correction and Registrat
 log_Msg "END"
 echo " END: `date`" >> $WD/log.txt
 
-########################################## QA STUFF ########################################## 
+########################################## QA STUFF ##########################################
 
 if [ -e $WD/qa.txt ] ; then rm -f $WD/qa.txt ; fi
 echo "cd `pwd`" >> $WD/qa.txt
 echo "# View registration result of corrected T2w to corrected T1w image: showing both images + sqrt(T1w*T2w)" >> $WD/qa.txt
-echo "fsleyes ${OutputT1wImage} ${OutputT2wImage} ${WD}/T2w2T1w/sqrtT1wbyT2w" >> $WD/qa.txt
+echo "fslview ${OutputT1wImage} ${OutputT2wImage} ${WD}/T2w2T1w/sqrtT1wbyT2w" >> $WD/qa.txt
 echo "# Compare pre- and post-distortion correction for T1w" >> $WD/qa.txt
-echo "fsleyes ${T1wImage} ${OutputT1wImage}" >> $WD/qa.txt
+echo "fslview ${T1wImage} ${OutputT1wImage}" >> $WD/qa.txt
 echo "# Compare pre- and post-distortion correction for T2w" >> $WD/qa.txt
-echo "fsleyes ${T2wImage} ${WD}/${T2wImageBasename}" >> $WD/qa.txt
+echo "fslview ${T2wImage} ${WD}/${T2wImageBasename}" >> $WD/qa.txt
 
 ##############################################################################################
 

@@ -54,6 +54,8 @@ opts_AddOptional '--ojacobian' 'JacobianOutput' 'image' "output Jacobian image (
 opts_AddOptional '--topupconfig' 'TopupConfig' 'path' "topup config file"
 
 opts_AddOptional '--usejacobian' 'UseJacobian' 'true or false' "Whether to apply the jacobian of the gradient non-linearity distortion correction.  Irrelevant if --gdcoeffs=NONE (Has nothing to do with the jacobian of the TOPUP warp field)"
+# added for marmoset data by A.Uematsu on 2024/09/03
+opts_AddOptional '--species' 'SPECIES' 'Human, Macaque, or Marmoset' "Processing either Human or Nonhuman primates paramteters.  'Humans' (the default) follows the HCP processing steps" # added by A.Uematsu on 2024/2/3
 
 opts_ParseArguments "$@"
 
@@ -297,8 +299,14 @@ ${FSLDIR}/bin/fslmaths ${WD}/SBRef_dc -mul ${WD}/Jacobian ${WD}/SBRef_dc_jac
 # Calculate Equivalent Field Map
 ${FSLDIR}/bin/fslmaths ${WD}/TopupField -mul 6.283 ${WD}/TopupField
 ${FSLDIR}/bin/fslmaths ${WD}/Magnitudes -Tmean ${WD}/Magnitude
-${FSLDIR}/bin/bet ${WD}/Magnitude ${WD}/Magnitude_brain -f 0.35 -m #Brain extract the magnitude image
-
+if [ "$SPECIES" = "Marmoset" ] ; then 
+	 antsRegistrationSyN.sh -d 3 -m $(dirname ${WD})/T2w_acpc_dc_restore.nii.gz -f ${WD}/Magnitude.nii.gz -t r -o ${WD}/Mask_
+	 antsApplyTransforms -d 3 -i $(dirname ${WD})/T2w_acpc_dc_restore_brain.nii.gz -o ${WD}/Magnitude_brain.nii.gz -r ${WD}/Magnitude.nii.gz -n NearestNeighbor -v -t ${WD}/Mask_0GenericAffine.mat
+	 fslmaths ${WD}/Magnitude_brain.nii.gz  -bin -dilD ${WD}/Magnitude_brain_mask.nii.gz
+	 fslmaths ${WD}/Magnitude.nii.gz -mas ${WD}/Magnitude_brain_mask.nii.gz ${WD}/Magnitude_brain.nii.gz
+else
+	${FSLDIR}/bin/bet ${WD}/Magnitude ${WD}/Magnitude_brain -f 0.35 -m #Brain extract the magnitude image
+fi
 # copy images to specified outputs
 # explicitly include .nii.gz suffix on outputs here, to avoid any ambiguity between files
 # vs directories with the same (base)name

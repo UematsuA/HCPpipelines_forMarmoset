@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 
 # Requirements for this script
 #  installed versions of: FSL (including python with numpy, needed to run aff2rigid - part of FSL)
@@ -9,7 +9,7 @@
 # ------------------------------------------------------------------------------
 
 
-set -eu
+set -e
 
 pipedirguessed=0
 if [[ "${HCPPIPEDIR:-}" == "" ]]
@@ -37,6 +37,10 @@ opts_AddMandatory '--omat' 'OutputMatrix' 'matrix' 'output matrix'
 opts_AddOptional '--ref' 'Reference' 'image' 'reference image' "${FSLDIR}/data/standard/MNI152_T1_1mm"
 
 opts_AddOptional '--brainsize' 'BrainSizeOpt' 'value' 'brainsize'
+
+opts_AddOptional '--identmat' 'IdentMat' 'NONE or TRUE' "Do regisration in ACPCAlignment, T2wToT1Reg and AtlasRegistration (NONE) or not (TRUE)" # added by A.Uematsu on 2024/2/3
+
+opts_AddOptional '--species' 'SPECIES' 'Human, Macaque, or Marmoset' "Processing either Human or Nonhuman primates paramteters.  'Humans' (the default) follows the HCP processing steps" # added by A.Uematsu on 2024/2/3
 
 opts_ParseArguments "$@"
 
@@ -76,7 +80,7 @@ verbose_echo " "
 
 mkdir -p $WD
 
-# Record the input options in a log file
+# Record the input options in a log files
 echo "$0 $@" >> $WD/log.txt
 echo "PWD = `pwd`" >> $WD/log.txt
 echo "date: `date`" >> $WD/log.txt
@@ -145,7 +149,7 @@ verbose_echo " "
 log_Msg "END"
 echo " END: `date`" >> $WD/log.txt
 
-########################################## QA STUFF ########################################## 
+########################################## QA STUFF ##########################################
 
 if [ -e $WD/qa.txt ] ; then rm -f $WD/qa.txt ; fi
 echo "cd `pwd`" >> $WD/qa.txt
