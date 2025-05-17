@@ -1,3 +1,7 @@
 FreeSurferHiresPial.sh and FreeSurferHiresWhite.sh are "legacy" scripts
 that support the use of FreeSurfer 5.3.  They are called by the
 ${HCPPIPEDIR}/FreeSurfer/FreeSurferPipeline-v5.3.0-HCP.sh script.
+
+## for marmoset fs pipeline was developed with FreeSurfer 7.4.1
+make softlinks of 
+- talairach_avi.marmo, mpr2mni305.marmo, recon-all.v7.marmo into $FreeSurfer_HOME/bin
