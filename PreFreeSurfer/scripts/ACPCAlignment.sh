@@ -112,10 +112,9 @@ if [ $IdentMat = "NONE" ] ; then
 		verbose_echo " --> marmoset"
 		${HCPPIPEDIR}/PreFreeSurfer/scripts/aff2rigid_marmoset "$WD"/full2std.mat "$OutputMatrix"
 	elif [[ $SPECIES == "Macaque" ]] ; then
-			verbose_echo " --> macaque"
-	#	${HCPPIPEDIR}/global/scripts/aff2rigid_world "$WD"/full2std.mat "$OutputMatrix"
-	#${HCPPIPEDIR}/PreFreeSurfer/scripts/aff2rigid_macaque2 "$WD"/full2std.mat "$OutputMatrix"
-	${HCPPIPEDIR}/global/scripts/aff2rigid_world "$WD"/full2std_world.mat "$WD"/full2std_rigid_world.mat
+		verbose_echo " --> macaque"
+		#${HCPPIPEDIR}/PreFreeSurfer/scripts/aff2rigid_macaque2 "$WD"/full2std.mat "$OutputMatrix"
+		${HCPPIPEDIR}/global/scripts/aff2rigid_world "$WD"/full2std.mat "$OutputMatrix"
     ${CARET7DIR}/wb_command -convert-affine -from-world "$WD"/full2std_rigid_world.mat -to-flirt "$OutputMatrix" "$Input".nii.gz "$Reference"
 
 	else
