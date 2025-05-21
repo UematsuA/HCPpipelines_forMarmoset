@@ -67,7 +67,7 @@ opts_AddMandatory '--method' 'DistortionCorrection' 'method' "method used for re
 
         '${PHILIPS_METHOD_OPT}'
            use Philips specific Gradient Echo Field Maps for readout distortion correction
-        
+
         '${GE_HEALTHCARE_LEGACY_METHOD_OPT}'
            use GE HealthCare Legacy specific Gradient Echo Field Maps for SDC (i.e., field map in Hz and magnitude image in a single NIfTI file, via --fmapcombined argument).
            This option is maintained for backward compatibility.
@@ -110,6 +110,8 @@ opts_AddOptional '--gdcoeffs' 'GradientDistortionCoeffs' 'file' "gradient distor
 opts_AddOptional '--usejacobian' 'UseJacobian' 'true or false' "Use jacobian" 
 
 # added for animal scanner by A.Uematsu on 2024/2/3
+opts_AddOptional '--bfsigma' 'BiasFieldSmoothingSigma' 'value' "Bias Field Smoothing Sigma (optional)"
+
 opts_AddOptional '--scanner' 'Scanner' 'siemens, GE, Philips, or bruker' "Animal scanner or not" # added by A.Uematsu on 2024/2/3
 # added for mamoset by A.Uematsu on 2024/09/03
 opts_AddOptional '--species' 'SPECIES' 'Human, Macaque, or Marmoset' "Processing either Human or Nonhuman primates paramteters.  'Humans' (the default) follows the HCP processing steps" # added by A.Uematsu on 2024/2/3
