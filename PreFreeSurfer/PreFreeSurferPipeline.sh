@@ -640,6 +640,7 @@ if [ "$CustomBrain" = "NONE" ] ; then
         --gdcoeffs=${GradientDistortionCoeffs} \
         --usejacobian=${UseJacobian} \
 		--species=${SPECIES} \
+		--bfsigma=${BiasFieldSmoothingSigma} \
 		--scanner=${Scanner} 
       ;;
 
